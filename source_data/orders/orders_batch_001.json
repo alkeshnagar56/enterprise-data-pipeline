@@ -1,0 +1,5 @@
+{"order_id":101,"customer_id":1,"amount":2500.00,"status":"PLACED","operation":"INSERT","event_timestamp":"2026-11-19T08:00:00"}
+{"order_id":102,"customer_id":2,"amount":1800.00,"status":"PLACED","operation":"INSERT","event_timestamp":"2026-11-19T08:01:00"}
+{"order_id":103,"customer_id":3,"amount":3200.00,"status":"SHIPPED","operation":"INSERT","event_timestamp":"2026-11-19T08:02:00"}
+{"order_id":104,"customer_id":1,"amount":900.00,"status":"PLACED","operation":"INSERT","event_timestamp":"2026-11-19T08:03:00"}
+{"order_id":105,"customer_id":4,"amount":4500.00,"status":"SHIPPED","operation":"INSERT","event_timestamp":"2026-11-19T08:04:00"}

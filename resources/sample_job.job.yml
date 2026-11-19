@@ -1,0 +1,32 @@
+
+resources:
+  jobs:
+    enterprise_data_pipeline:
+      name: enterprise_data_pipeline_${bundle.target}
+
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+
+      tasks:
+        - task_key: orders_autoloader_ingestion
+
+          python_wheel_task:
+            package_name: enterprise_data_pipeline
+            entry_point: main
+            parameters:
+              - "--catalog"
+              - "{{job.parameters.catalog}}"
+              - "--schema"
+              - "{{job.parameters.schema}}"
+
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "5"
+            dependencies:
+              - ../dist/*.whl
