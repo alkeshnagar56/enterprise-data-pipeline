@@ -1,8 +1,8 @@
-
-import argparse
+﻿import argparse
 
 from databricks.sdk.runtime import spark
-from enterprise_data_pipeline.ingestion.autoloader import ingest_orders
+
+from enterprise_data_pipeline.ingestion.autoloader import ingest_all
 
 
 def main():
@@ -19,17 +19,15 @@ def main():
     schema = args.schema
 
     print(f"Starting pipeline for {catalog}.{schema}")
+    print("Starting Bronze ingestion...")
 
-    spark.sql(f"USE CATALOG `{catalog}`")
-    spark.sql(f"USE SCHEMA `{schema}`")
-
-    ingest_orders(
+    ingest_all(
         spark=spark,
         catalog=catalog,
-        schema=schema
+        schema=schema,
     )
 
-    print("Enterprise Data Pipeline execution completed.")
+    print("Bronze ingestion completed successfully.")
 
 
 if __name__ == "__main__":
