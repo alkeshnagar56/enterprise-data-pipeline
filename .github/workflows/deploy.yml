@@ -1,0 +1,52 @@
+﻿name: Deploy Enterprise Data Pipeline
+
+on:
+  push:
+    branches:
+      - feature/github-actions-ci
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-data-pipeline-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate and deploy to Databricks
+    runs-on: ubuntu-latest
+
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Databricks CLI
+        uses: databricks/setup-cli@main
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run lint checks
+        run: uv run ruff check .
+
+      - name: Validate bundle
+        run: databricks bundle validate --target dev
+
+      - name: Deploy bundle
+        run: databricks bundle deploy --target dev
