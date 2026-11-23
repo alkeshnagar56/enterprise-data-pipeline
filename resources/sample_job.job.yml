@@ -1,4 +1,4 @@
-
+﻿
 resources:
   jobs:
     enterprise_data_pipeline:
@@ -11,7 +11,7 @@ resources:
           default: ${var.schema}
 
       tasks:
-        - task_key: orders_autoloader_ingestion
+        - task_key: bronze_autoloader_ingestion
 
           python_wheel_task:
             package_name: enterprise_data_pipeline
@@ -30,3 +30,4 @@ resources:
             environment_version: "5"
             dependencies:
               - ../dist/*.whl
+

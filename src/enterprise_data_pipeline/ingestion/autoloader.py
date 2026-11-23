@@ -1,51 +1,53 @@
+﻿from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, current_timestamp
 
-from pyspark.sql import SparkSession
-from pyspark.sql.functions import (
-    current_timestamp,
-    input_file_name
+ENTITIES = (
+    "customers",
+    "orders",
+    "order_items",
+    "products",
 )
 
 
-def ingest_orders(
+def ingest_entity(
     spark: SparkSession,
+    entity: str,
     catalog: str,
-    schema: str
-):
-    source_path = (
-        "/Volumes/project_work/dev/edp_storage/landing/orders/"
-    )
+    schema: str,
+) -> None:
+    if entity not in ENTITIES:
+        raise ValueError(f"Unsupported entity: {entity}")
 
-    schema_path = (
-        "/Volumes/project_work/dev/edp_storage/schema/orders/"
-    )
+    volume_path = f"/Volumes/{catalog}/{schema}/edp_storage"
 
-    checkpoint_path = (
-        "/Volumes/project_work/dev/edp_storage/checkpoints/orders/"
-    )
+    source_path = f"{volume_path}/landing/csv/{entity}/"
+    schema_path = f"{volume_path}/schema/csv/{entity}/"
+    checkpoint_path = f"{volume_path}/checkpoints/csv/{entity}/"
 
-    target_table = f"{catalog}.{schema}.bronze_orders"
+    target_table = f"{catalog}.{schema}.bronze_{entity}"
 
-    # Read incoming JSON files using Auto Loader
-    orders_df = (
+    # Read CSV files using Auto Loader
+    entity_df = (
         spark.readStream
         .format("cloudFiles")
-        .option("cloudFiles.format", "json")
+        .option("cloudFiles.format", "csv")
         .option("cloudFiles.schemaLocation", schema_path)
         .option("cloudFiles.schemaEvolutionMode", "addNewColumns")
-        .option("cloudFiles.inferColumnTypes", "true")
+        .option("cloudFiles.inferColumnTypes", "false")
+        .option("header", "true")
         .load(source_path)
     )
 
     # Add ingestion metadata
-    orders_df = (
-        orders_df
+    entity_df = (
+        entity_df
         .withColumn("_ingestion_timestamp", current_timestamp())
-        .withColumn("_source_file", input_file_name())
+        .withColumn("_source_file", col("_metadata.file_path"))
     )
 
-    # Write data into Bronze Delta table
+    # Write records into Bronze Delta table
     query = (
-        orders_df.writeStream
+        entity_df.writeStream
         .format("delta")
         .outputMode("append")
         .option("checkpointLocation", checkpoint_path)
@@ -55,4 +57,22 @@ def ingest_orders(
 
     query.awaitTermination()
 
-    print("Orders ingestion completed successfully.")
+    print(f"{entity} ingestion completed successfully.")
+
+
+def ingest_all(
+    spark: SparkSession,
+    catalog: str,
+    schema: str,
+) -> None:
+    for entity in ENTITIES:
+        print(f"Starting Auto Loader ingestion: {entity}")
+
+        ingest_entity(
+            spark=spark,
+            entity=entity,
+            catalog=catalog,
+            schema=schema,
+        )
+
+    print("All Bronze ingestion completed successfully.")
