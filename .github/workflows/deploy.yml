@@ -3,7 +3,7 @@
 on:
   push:
     branches:
-      - feature/github-actions-ci
+      - main
   workflow_dispatch:
 
 permissions:
