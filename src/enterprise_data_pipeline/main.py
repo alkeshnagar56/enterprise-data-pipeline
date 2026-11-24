@@ -3,6 +3,7 @@ import argparse
 
 from databricks.sdk.runtime import spark
 
+from enterprise_data_pipeline.gold.transformations import transform_daily_sales
 from enterprise_data_pipeline.ingestion.autoloader import ingest_all
 from enterprise_data_pipeline.silver.transformations import transform_all
 
@@ -27,6 +28,10 @@ def main():
     print("Starting Silver transformations...")
     transform_all(spark=spark, catalog=catalog, schema=schema)
     print("Silver transformations completed successfully.")
+
+    print("Starting Gold transformations...")
+    transform_daily_sales(spark, catalog, schema)
+    print("Gold transformations completed successfully.")
 
 
 if __name__ == "__main__":

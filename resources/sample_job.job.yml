@@ -11,7 +11,7 @@ resources:
           default: ${var.schema}
 
       tasks:
-        - task_key: bronze_autoloader_ingestion
+        - task_key: enterprise_data_pipeline
 
           python_wheel_task:
             package_name: enterprise_data_pipeline
