@@ -29,5 +29,5 @@ resources:
           spec:
             environment_version: "5"
             dependencies:
-              - ../dist/*.whl
+              - ${workspace.root_path}/artifacts/.internal/enterprise_data_pipeline-0.0.1-py3-none-any.whl
 
