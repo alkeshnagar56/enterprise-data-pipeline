@@ -151,7 +151,7 @@ def create_demo_cdc_events(
     (
         event_df.write
         .format("delta")
-        .mode("errorifexists")
+        .mode("ignore")
         .saveAsTable(events_table)
     )
 
