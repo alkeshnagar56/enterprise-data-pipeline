@@ -13,8 +13,15 @@ def build_daily_sales(
     orders_table = f"{catalog}.{schema}.silver_orders"
     items_table = f"{catalog}.{schema}.silver_order_items"
 
-    orders = spark.table(orders_table)
-    order_items = spark.table(items_table)
+    orders = (
+        spark.table(orders_table)
+        .filter(F.coalesce(F.col("_is_deleted"), F.lit(False)) == F.lit(False))
+    )
+
+    order_items = (
+        spark.table(items_table)
+        .filter(F.coalesce(F.col("_is_deleted"), F.lit(False)) == F.lit(False))
+    )
 
     # Calculate total value for each order.
     order_amounts = (

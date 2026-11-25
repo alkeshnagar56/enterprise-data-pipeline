@@ -94,3 +94,32 @@ def transform_all(spark: SparkSession, catalog: str, schema: str) -> None:
         print(f"Completed Silver transformation: {entity}")
 
     print("All Silver transformations completed successfully.")
+
+
+
+
+def bootstrap_silver_tables(
+    spark: SparkSession,
+    catalog: str,
+    schema: str,
+) -> None:
+    """Create Silver tables only when they do not already exist."""
+
+    transformations = (
+        ("customers", transform_customers),
+        ("orders", transform_orders),
+        ("order_items", transform_order_items),
+        ("products", transform_products),
+    )
+
+    for entity, transform in transformations:
+        table = f"{catalog}.{schema}.silver_{entity}"
+
+        if spark.catalog.tableExists(table):
+            print(f"Silver table already exists. Skipping bootstrap: {table}")
+            continue
+
+        print(f"Silver table missing. Bootstrapping: {table}")
+        transform(spark, catalog, schema)
+
+    print("Silver bootstrap completed.")
