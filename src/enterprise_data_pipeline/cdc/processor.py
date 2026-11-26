@@ -213,3 +213,72 @@ def apply_cdc_events(
         )
 
     print("CDC processing completed.")
+
+
+
+def get_silver_table_versions(
+    spark: SparkSession,
+    catalog: str,
+    schema: str,
+) -> dict[str, int]:
+    """Capture the latest Delta version of each Silver table."""
+
+    versions = {}
+
+    for entity in ENTITY_PRIMARY_KEYS:
+        table = f"{catalog}.{schema}.silver_{entity}"
+
+        history = spark.sql(
+            f"DESCRIBE HISTORY {table} LIMIT 1"
+        )
+
+        version = history.select("version").first()["version"]
+        versions[entity] = int(version)
+
+        print(f"Starting version for {table}: {version}")
+
+    return versions
+
+
+def read_silver_cdf(
+    spark: SparkSession,
+    catalog: str,
+    schema: str,
+    starting_versions: dict[str, int],
+) -> None:
+    """Read and display changes created by CDC processing."""
+
+    print("Reading Delta Change Data Feed...")
+
+    for entity, primary_key in ENTITY_PRIMARY_KEYS.items():
+        table = f"{catalog}.{schema}.silver_{entity}"
+
+        starting_version = starting_versions[entity]
+        ending_version = get_silver_table_versions(
+            spark, catalog, schema
+        )[entity]
+
+        if ending_version <= starting_version:
+            print(f"No new Delta versions for {table}.")
+            continue
+
+        changes = (
+            spark.read.format("delta")
+            .option("readChangeFeed", "true")
+            .option("startingVersion", starting_version + 1)
+            .option("endingVersion", ending_version)
+            .table(table)
+        )
+
+        print(f"CDF changes for {table}:")
+
+        changes.groupBy("_change_type").count().show(truncate=False)
+
+        changes.select(
+            primary_key,
+            "_change_type",
+            "_commit_version",
+            "_commit_timestamp",
+        ).show(truncate=False)
+
+    print("CDF reading and validation completed.")

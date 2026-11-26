@@ -6,7 +6,9 @@ from databricks.sdk.runtime import spark
 from enterprise_data_pipeline.cdc.event_source import create_demo_cdc_events
 from enterprise_data_pipeline.cdc.processor import (
     apply_cdc_events,
+    get_silver_table_versions,
     prepare_silver_tables,
+    read_silver_cdf,
 )
 from enterprise_data_pipeline.gold.transformations import transform_daily_sales
 from enterprise_data_pipeline.ingestion.autoloader import ingest_all
@@ -42,9 +44,23 @@ def main():
     create_demo_cdc_events(spark=spark, catalog=catalog, schema=schema)
     print("CDC event source ready.")
 
+    print("Capturing Silver table versions before CDC...")
+    starting_versions = get_silver_table_versions(
+        spark, catalog, schema
+    )
+
     print("Applying CDC events to Silver...")
     apply_cdc_events(spark=spark, catalog=catalog, schema=schema)
     print("CDC processing completed.")
+
+    print("Reading changes using Delta CDF...")
+    read_silver_cdf(
+        spark=spark,
+        catalog=catalog,
+        schema=schema,
+        starting_versions=starting_versions,
+    )
+    print("CDF validation completed.")
 
     print("Starting Gold transformations...")
     transform_daily_sales(spark, catalog, schema)

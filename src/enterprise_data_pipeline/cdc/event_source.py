@@ -1,8 +1,10 @@
 
 import json
 from datetime import UTC, datetime
+from decimal import Decimal
 
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 from pyspark.sql.types import (
     LongType,
     StringType,
@@ -36,13 +38,11 @@ EVENT_SCHEMA = StructType([
 ])
 
 
-
 def build_updated_payload(row, primary_key: str) -> str:
     """Create a visibly changed record for a simulated UPDATE event."""
 
     payload = row.asDict(recursive=True)
 
-    # Prefer changing a descriptive string field, not an identifier.
     candidates = [
         name
         for name, value in payload.items()
@@ -58,14 +58,10 @@ def build_updated_payload(row, primary_key: str) -> str:
 
     elif isinstance(payload.get("status"), str):
         payload["status"] = (
-            "PROCESSING"
-            if payload["status"] != "PROCESSING"
-            else "PENDING"
+            "PROCESSING" if payload["status"] != "PROCESSING" else "PENDING"
         )
 
     else:
-        from decimal import Decimal
-
         candidates = [
             name
             for name, value in payload.items()
@@ -89,16 +85,21 @@ def create_demo_cdc_events(
     catalog: str,
     schema: str,
 ) -> None:
-    """Create a one-time simulated CDC event feed from existing Silver data."""
+    """Append a fresh batch of simulated CDC events."""
 
     events_table = f"{catalog}.{schema}.bronze_cdc_events"
 
     if spark.catalog.tableExists(events_table):
-        print(f"CDC event table already exists: {events_table}")
-        return
+        latest_sequence = (
+            spark.table(events_table)
+            .agg(F.max("event_sequence").alias("max_sequence"))
+            .first()["max_sequence"]
+        )
+        event_sequence = int(latest_sequence or 1000) + 1
+    else:
+        event_sequence = 1001
 
     records = []
-    event_sequence = 1001
     event_timestamp = datetime.now(UTC).replace(tzinfo=None)
 
     for entity, primary_key in ENTITY_PRIMARY_KEYS.items():
@@ -148,12 +149,19 @@ def create_demo_cdc_events(
 
     event_df = spark.createDataFrame(records, schema=EVENT_SCHEMA)
 
+    write_mode = (
+        "append"
+        if spark.catalog.tableExists(events_table)
+        else "ignore"
+    )
+
     (
         event_df.write
         .format("delta")
-        .mode("ignore")
+        .mode(write_mode)
         .saveAsTable(events_table)
     )
 
-    print(f"Created simulated CDC event feed: {events_table}")
-    print(f"Total simulated events: {len(records)}")
+    print(f"Added simulated CDC events to: {events_table}")
+    print(f"New events in this batch: {len(records)}")
+    print(f"Sequence range: {event_sequence - len(records)} to {event_sequence - 1}")
